@@ -10,6 +10,7 @@ headers = {"User-Agent": "Ledebook, written by Melecie (en:User:Melecie, github 
 articleList = [] 
 infoList = []
 imgList = []
+#itemList = []
 titleList = []
 articleNo = 0
 
@@ -18,14 +19,13 @@ allPages = input()
 
 allPages = allPages.split("|")
 
-for page in allPages: # inputing end causes page collection to end
-
-    # getting article info
+for page in allPages:
+	
+    # getting enwiki article info
     infourl = "https://en.wikipedia.org/w/rest.php/v1/search/page?q=" + page + "&limit=1"
     pageinfo = requests.get(infourl, headers=headers)
     pageinfo = pageinfo.json()
     pageinfo = pageinfo["pages"]
-    
     pageinfo = pageinfo[0]
     
     page = (pageinfo["title"])
@@ -34,12 +34,10 @@ for page in allPages: # inputing end causes page collection to end
     pageid = str(pageid)
     
     # getting article lede
-    dataurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=' + page + '&format=json' # rm explaintext
-    response = requests.get(dataurl, headers=headers)
+    articleurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=' + page + '&format=json' # rm explaintext
+    response = requests.get(articleurl, headers=headers)
     data = response.json()
-    data = (data["query"])
-    data = (data["pages"])
-    data = (data[pageid])
+    data = (data["query"]["pages"][pageid])
     title = (data["title"])
     extract = (data["extract"])
     
@@ -48,6 +46,7 @@ for page in allPages: # inputing end causes page collection to end
     infoList.append(pageinfo)
     #linkList.append(pageinfo["html_url"])
     titleList.append(title)
+    #itemList.append(item)
     #imgList.append(image) # COMMENTED OUT - Need a more graceful way to do this that'd include copyright notices
     print('Article "' + title + '" added')
     
@@ -59,23 +58,9 @@ print(str(articleNo) + " articles detected, output has been printed onto output.
 outputFile = open('output.html', 'w', encoding="utf-8")
 
 outputHTML = """<html>
-
 <style>
-body {
-	background-color: #eef;
-	font-family:"Arial";
-	color: black;
-	font-size: 16px
-    }
-    
-body {
-	background-color: #eef;
-	font-family:"Arial";
-	color: #002;
-	font-size: 16px
-    }
-    </style>
-    
+body { background-color: #eef; font-family:"Arial"; color: black; font-size: 16px}
+.notes {border-style: solid; border-color: #aaf; background-color:#ddf; padding: 2px 20px 2px 20px}
 <br><title>Ledebook</title><h1><center>Ledebook</center></h1><hr>"""
 
 # get current time, convert to UTC
@@ -101,7 +86,7 @@ for x in range(0, articleNo): # writing lede text
     
     continue
     
-outputHTML += "<br><i>Ledebook Generator by <b>Melecie</b>, contributions by various users from various English Wikipedia pages licensed under Creative Commons Attribution-ShareAlike License 3.0:</i><br><ul>"
+outputHTML += "<br><i>Ledebook Generator by <b>Melecie</b>, contributions by various users from various English Wikipedia pages and Wikidata licensed under Creative Commons Attribution-ShareAlike License 3.0 and Creative Commons 0 respectively.</i><br><ul>"
 for x in range(0, articleNo): # writing links to full articles
     outputHTML += "<li><a href='https://en.wikipedia.org/wiki/" + titleList[x].replace(' ',"_") + "'>" + titleList[x] +"</a></li>"
     continue
