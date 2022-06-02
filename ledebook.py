@@ -10,11 +10,12 @@ headers = {"User-Agent": "Ledebook, written by Melecie (en:User:Melecie, github 
 articleList = [] 
 infoList = []
 imgList = []
+imgInfoList = []
 catList = []
 titleList = []
 articleNo = 0
 
-# initialize all categories with note counterparts
+# initialize all non-WikiProject categories with note counterparts
 noteList = {
 "Category:All Wikipedia level-1 vital articles": "Vital articles: I",
 "Category:All Wikipedia level-2 vital articles": "Vital articles: II",
@@ -24,6 +25,7 @@ noteList = {
 "Category:Biography articles of living people": "Living person",
 }
 
+# all WikiProject categories that shan't be added
 noteFilter = ["Version 1.0"]
 
 print('Hello world! Input article names below. Separate articles using pipes [ | ]')
@@ -52,12 +54,51 @@ for page in allPages:
 		pageid = str(pageid)
 	
 		# getting article lede
-		articleurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=' + page + '&format=json' # rm explaintext
+		articleurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts|images&exintro&titles=' + page + '&format=json'
 		response = requests.get(articleurl, headers=headers)
 		data = response.json()
 		data = (data["query"]["pages"][pageid])
 		title = (data["title"])
 		extract = (data["extract"])
+	
+		# getting first image
+		imageurl = 'https://en.wikipedia.org/w/api.php?action=parse&prop=images&format=json&page=' + page
+		response = requests.get(imageurl, headers=headers)
+		images = response.json()
+		images = images["parse"]["images"]
+		imagename = "none"
+		imagelink = "none"
+		imageinfo = "none"
+		for img in images:
+			if img.endswith(".png") or img.endswith(".jpg") or img.endswith(".gif"): # exclude other media types including svg
+				imagename = img
+				break
+				
+		# get image from commons
+		if imagename != "none":
+			infourl = "https://commons.wikimedia.org/w/rest.php/v1/file/File:" + imagename
+			response = requests.get(infourl, headers=headers)
+			imageinfo = response.json()
+			
+			try:
+				if imageinfo["httpReason"] == "Not Found":
+					print("Image cannot be found in Commons for " + title + ", skipping")
+					imagelink = "none"
+				
+			except:
+				imagelink = imageinfo["preferred"]["url"]
+			
+				# get license info from Commons
+				imageurl = "https://commons.wikimedia.org/w/api.php?action=query&prop=imageinfo&format=json&iiprop=extmetadata&iilimit=5&titles=File:" + imagename
+				response = requests.get(imageurl, headers=headers)
+				imageinfo = response.json()
+				imageinfo = imageinfo["query"]["pages"]
+				imageinfo = list(imageinfo.values())[0]
+				imageinfo = imageinfo["imageinfo"][0]
+				print("Image found for " + title)
+		
+		else:
+			print("No usable image found for " + title + ", skipping")
 	
 		# getting article categories from Talk
 		catsurl = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=categories&cllimit=150&titles=Talk:' + page
@@ -75,8 +116,8 @@ for page in allPages:
 		#linkList.append(pageinfo["html_url"])
 		titleList.append(title)
 		catList.append(allcats)
-	
-		#imgList.append(image) # COMMENTED OUT - Need a more graceful way to do this that'd include copyright notices
+		imgList.append(imagelink)
+		imgInfoList.append(imageinfo)
 		print('Article "' + title + '" added')
 	
 	continue
@@ -106,12 +147,13 @@ if articleNo > 9: # write contents if there are a lot of contents
 
 for x in range(0, articleNo): # writing lede text
 
-	# if image != null, add the thumbnail to the right before the text
-	#img = imgList[x]
-	#if isinstance(img, dict):
-	#	outputHTML += "<img src='https:" + img["url"] + "' alt='" + titleList[x] + "' style='float:right'>"
+	outputHTML += "<h2>" + titleList[x] + "</h2>"
 
-	outputHTML += "<h2>" + titleList[x] + "</h2>" + articleList[x] + ""
+	#if image != null, add the thumbnail to the right before the text
+	if imgList[x] != "none":
+		outputHTML += "<img src='" + imgList[x] + "' width='256px' alt='" + titleList[x] + "' style='float:right'>"
+
+	outputHTML += "" + articleList[x] + ""
 
 	notes = catList[x]
 	allNotes = []
@@ -148,6 +190,17 @@ for x in range(0, articleNo): # writing links to full articles
 	outputHTML += "<li><a href='https://en.wikipedia.org/wiki/" + titleList[x].replace(' ',"_") + "'>" + titleList[x] +"</a></li>"
 	continue
 
+outputHTML += "</ul><i>Images used:</i><ul>"
+for x in range(0, articleNo): # writing credit links to images
+	imgInfo = imgInfoList[x]
+	if imgInfo != "none":
+		imgInfo = imgInfo["extmetadata"]
+		outputHTML += "<li>"
+		outputHTML += imgInfo["ObjectName"]["value"]
+		outputHTML += " | " + imgInfo["Artist"]["value"]
+		outputHTML += " | " + imgInfo["UsageTerms"]["value"]
+		outputHTML += "</li>"
+	
 outputHTML += "</ul><i>Created on " + timestamp + " (UTC)</i></html>"
 
 outputFile.write(outputHTML)
