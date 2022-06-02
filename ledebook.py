@@ -33,45 +33,51 @@ allPages = allPages.split("|")
 
 for page in allPages:
 	
+	
 	# getting enwiki article info
 	infourl = "https://en.wikipedia.org/w/rest.php/v1/search/page?q=" + page + "&limit=1"
 	pageinfo = requests.get(infourl, headers=headers)
 	pageinfo = pageinfo.json()
 	pageinfo = pageinfo["pages"]
-	pageinfo = pageinfo[0]
 	
-	page = (pageinfo["title"])
-	pageid = (pageinfo["id"])
-	#image = (pageinfo["thumbnail"])
-	pageid = str(pageid)
 	
-	# getting article lede
-	articleurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=' + page + '&format=json' # rm explaintext
-	response = requests.get(articleurl, headers=headers)
-	data = response.json()
-	data = (data["query"]["pages"][pageid])
-	title = (data["title"])
-	extract = (data["extract"])
+	if pageinfo == []:
+		print('Article "' + page + '" cannot be found, skipping...')
 	
-	# getting article categories from Talk
-	catsurl = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=categories&cllimit=150&titles=Talk:' + page
-	response = requests.get(catsurl, headers=headers)
-	cats = response.json()
-	cats = cats["query"]["pages"]
-	allcats = []
-	for id, datas in cats.items():
-		for catname in datas['categories']:
-			allcats = allcats + [catname["title"]]
+	else:
+		pageinfo = pageinfo[0]
+		page = (pageinfo["title"])
+		pageid = (pageinfo["id"])
+		#image = (pageinfo["thumbnail"])
+		pageid = str(pageid)
 	
-	articleNo = articleNo + 1
-	articleList.append(extract)
-	infoList.append(pageinfo)
-	#linkList.append(pageinfo["html_url"])
-	titleList.append(title)
-	catList.append(allcats)
+		# getting article lede
+		articleurl = 'https://en.wikipedia.org/w/api.php?action=query&prop=extracts&exintro&titles=' + page + '&format=json' # rm explaintext
+		response = requests.get(articleurl, headers=headers)
+		data = response.json()
+		data = (data["query"]["pages"][pageid])
+		title = (data["title"])
+		extract = (data["extract"])
 	
-	#imgList.append(image) # COMMENTED OUT - Need a more graceful way to do this that'd include copyright notices
-	print('Article "' + title + '" added')
+		# getting article categories from Talk
+		catsurl = 'https://en.wikipedia.org/w/api.php?action=query&format=json&prop=categories&cllimit=150&titles=Talk:' + page
+		response = requests.get(catsurl, headers=headers)
+		cats = response.json()
+		cats = cats["query"]["pages"]
+		allcats = []
+		for id, datas in cats.items():
+			for catname in datas['categories']:
+				allcats = allcats + [catname["title"]]
+	
+		articleNo = articleNo + 1
+		articleList.append(extract)
+		infoList.append(pageinfo)
+		#linkList.append(pageinfo["html_url"])
+		titleList.append(title)
+		catList.append(allcats)
+	
+		#imgList.append(image) # COMMENTED OUT - Need a more graceful way to do this that'd include copyright notices
+		print('Article "' + title + '" added')
 	
 	continue
 	
